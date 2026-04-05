@@ -87,7 +87,6 @@ export default function Home() {
           <a href="https://x.com/sunjaebae" target="_blank" rel="noopener">
             x
           </a>
-          <a href="mailto:hello@example.com">email</a>
         </div>
       </section>
     </div>
