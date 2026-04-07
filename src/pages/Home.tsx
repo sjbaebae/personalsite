@@ -78,7 +78,7 @@ export default function Home() {
           say hi: sbae703@gmail.com
         </h2>
         <div className="flex gap-4 text-sm font-mono">
-          <a href="https://github.com/hydral8" target="_blank" rel="noopener">
+          <a href="https://github.com/sjbaebae" target="_blank" rel="noopener">
             github
           </a>
           <a href="https://linkedin.com/in/sungjaebae" target="_blank" rel="noopener">
