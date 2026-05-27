@@ -2,8 +2,9 @@ import { useState } from 'react'
 import Home from '../pages/Home'
 import Blog from '../pages/Blog'
 import Curated from '../pages/Curated'
+import Library from '../pages/Library'
 
-const TABS = ['home', 'blog', 'curated'] as const
+const TABS = ['home', 'blog', 'library', 'curated'] as const
 type Tab = (typeof TABS)[number]
 
 export default function Site() {
@@ -42,6 +43,7 @@ export default function Site() {
       <main className="flex-1 max-w-2xl mx-auto px-6 py-12 w-full">
         {tab === 'home' && <Home />}
         {tab === 'blog' && <Blog />}
+        {tab === 'library' && <Library />}
         {tab === 'curated' && <Curated />}
       </main>
     </div>
