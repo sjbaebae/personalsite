@@ -35,7 +35,7 @@ const D = {
 };
 
 const CANVAS_W = 1500;
-const CANVAS_H = 2940;
+const CANVAS_H = 3180;
 
 const useFitWidth = (W: number) => {
   const [scale, setScale] = useState(1);
@@ -1541,7 +1541,6 @@ const ProjectsPage = ({
     year: string;
     name: string;
     blurb: ReactNode;
-    status: "live" | "paused" | "archived";
   }[] = [
     {
       thumb: "clinic",
@@ -1554,7 +1553,6 @@ const ProjectsPage = ({
           and because s-expressions hold up well at 3am.
         </>
       ),
-      status: "live",
     },
     {
       thumb: "circuits",
@@ -1568,7 +1566,6 @@ const ProjectsPage = ({
           thesis.
         </>
       ),
-      status: "live",
     },
     {
       thumb: "match",
@@ -1581,7 +1578,6 @@ const ProjectsPage = ({
           usually Ødegaard, occasionally Rice.
         </>
       ),
-      status: "paused",
     },
     {
       thumb: "febrile",
@@ -1594,7 +1590,6 @@ const ProjectsPage = ({
           tried. The prior, in medicine, eats your model alive.
         </>
       ),
-      status: "archived",
     },
     {
       thumb: "site",
@@ -1608,11 +1603,10 @@ const ProjectsPage = ({
           expected.
         </>
       ),
-      status: "live",
     },
   ];
   return (
-    <Item x={x} y={y} w={1360} h={940} rotate={rotate} z={11}>
+    <Item x={x} y={y} w={1360} h={1120} rotate={rotate} z={11}>
       <div
         style={{
           width: "100%",
@@ -1676,7 +1670,7 @@ const ProjectsPage = ({
                 textTransform: "uppercase",
               }}
             >
-              fol. 03 — things i've made
+              things i've made
             </div>
             <div
               style={{
@@ -1690,36 +1684,20 @@ const ProjectsPage = ({
               projects.
             </div>
           </div>
-          <div
-            style={{
-              font: `italic 13px/1.55 "Spectral"`,
-              color: D.ink2,
-              maxWidth: 320,
-              textAlign: "right",
-            }}
-          >
-            most of these are unfinished; some are abandoned with affection.
-            current code lives on{" "}
-            <span
-              style={{
-                borderBottom: `1px solid ${D.ochre}`,
-                fontStyle: "normal",
-                fontWeight: 500,
-              }}
-            >
-              github
-            </span>
-            .
-          </div>
         </div>
 
-        <div style={{ marginTop: 14 }}>
+        <div
+          style={{
+            marginTop: 14,
+            paddingRight: 18,
+          }}
+        >
           {rows.map((r, i) => (
             <div
               key={i}
               style={{
                 display: "grid",
-                gridTemplateColumns: "140px 1fr 90px",
+                gridTemplateColumns: "140px 1fr",
                 gap: 28,
                 padding: "20px 0",
                 alignItems: "flex-start",
@@ -1766,23 +1744,6 @@ const ProjectsPage = ({
                   {r.blurb}
                 </div>
               </div>
-              <div
-                style={{
-                  font: `500 11px ${D.mono}`,
-                  color:
-                    r.status === "live"
-                      ? D.red
-                      : r.status === "paused"
-                        ? D.ochre
-                        : D.ink3,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  paddingTop: 8,
-                  textAlign: "right",
-                }}
-              >
-                {r.status}
-              </div>
             </div>
           ))}
         </div>
@@ -1796,10 +1757,15 @@ const ProjectsPage = ({
 // =========================================================================
 
 const LIBRARY_ITEMS = [
-  ["book", "Real Analysis I", "terence tao · first in the series"],
-  ["talk", "generalization", "ilya on why models learn"],
-  ["site", "explorables", "complex systems, made tangible"],
-  ["book", "ml systems design", "the parts around the model"],
+  [
+    "book",
+    "Real Analysis I",
+    "terence tao · first in the series",
+    "https://turan-edu.uz/media/books/2024/05/28/1664976801.pdf",
+  ],
+  ["talk", "generalization", "ilya on why models learn", undefined],
+  ["site", "explorables", "complex systems, made tangible", undefined],
+  ["book", "ml systems design", "the parts around the model", undefined],
 ] as const;
 
 const LibraryCard = ({
@@ -1848,45 +1814,67 @@ const LibraryCard = ({
       </div>
 
       <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-        {LIBRARY_ITEMS.map(([kind, title, note]) => (
-          <div
-            key={title}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "64px 1fr",
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                font: `500 10px ${D.mono}`,
-                color: D.ochre,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                paddingTop: 2,
-              }}
-            >
-              {kind}
-            </div>
-            <div>
-              <div style={{ font: `500 15px/1.2 "Spectral"`, color: D.ink }}>
-                {title}
-              </div>
+        {LIBRARY_ITEMS.map(([kind, title, note, href]) => {
+          const content = (
+            <>
               <div
-                style={{ font: `italic 12.5px/1.35 "Spectral"`, color: D.ink2 }}
+                style={{
+                  font: `500 10px ${D.mono}`,
+                  color: D.ochre,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  paddingTop: 2,
+                }}
               >
-                {note}
+                {kind}
               </div>
+              <div>
+                <div style={{ font: `500 15px/1.2 "Spectral"`, color: D.ink }}>
+                  {title}
+                </div>
+                <div
+                  style={{
+                    font: `italic 12.5px/1.35 "Spectral"`,
+                    color: D.ink2,
+                  }}
+                >
+                  {note}
+                </div>
+              </div>
+            </>
+          );
+
+          const style: CSSProperties = {
+            display: "grid",
+            gridTemplateColumns: "64px 1fr",
+            gap: 12,
+            color: "inherit",
+            textDecoration: "none",
+          };
+
+          return href ? (
+            <a
+              key={title}
+              href={href}
+              target="_blank"
+              rel="noopener"
+              style={style}
+            >
+              {content}
+            </a>
+          ) : (
+            <div key={title} style={style}>
+              {content}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   </Item>
 );
 
 // =========================================================================
-// Now playing + arsenal ticket
+// Now playing
 // =========================================================================
 
 const NowCard = ({
@@ -1978,10 +1966,10 @@ const NowCard = ({
               marginTop: 4,
             }}
           >
-            the köln concert
+            home
           </div>
           <div style={{ font: `italic 12.5px "Spectral"`, color: D.ink2 }}>
-            keith jarrett · ECM, '75
+            charlie puth · hikaru utada
           </div>
         </div>
         <div
@@ -1994,91 +1982,6 @@ const NowCard = ({
         >
           <span>side a · ◀◀ ▶ ▶▶</span>
           <span>23:14</span>
-        </div>
-      </div>
-    </div>
-  </Item>
-);
-
-const ArsenalTicket = ({
-  x,
-  y,
-  rotate = 0,
-}: {
-  x: number;
-  y: number;
-  rotate?: number;
-}) => (
-  <Item x={x} y={y} w={300} h={120} rotate={rotate} z={11}>
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "#ec1c2d",
-        color: "#fff8e6",
-        padding: "12px 16px",
-        fontFamily: D.mono,
-        position: "relative",
-        display: "grid",
-        gridTemplateColumns: "1fr 70px",
-        gap: 10,
-        borderLeft: `1px dashed #fff8e655`,
-      }}
-    >
-      <div>
-        <div
-          style={{
-            font: `600 9px ${D.mono}`,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            opacity: 0.8,
-          }}
-        >
-          THE EMIRATES · NORTH BANK
-        </div>
-        <div
-          style={{
-            font: `400 22px/1 "Spectral"`,
-            marginTop: 8,
-            fontStyle: "italic",
-          }}
-        >
-          arsenal <span style={{ fontWeight: 600 }}>2</span> —{" "}
-          <span style={{ fontWeight: 600 }}>1</span> chelsea
-        </div>
-        <div
-          style={{ font: `400 11px ${D.mono}`, marginTop: 6, opacity: 0.85 }}
-        >
-          row 12 · seat 24c · 19:30
-        </div>
-      </div>
-      <div
-        style={{
-          borderLeft: `1px dashed #fff8e655`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          paddingLeft: 10,
-        }}
-      >
-        <div
-          style={{
-            font: `600 10px ${D.mono}`,
-            letterSpacing: "0.06em",
-            textAlign: "right",
-          }}
-        >
-          STUB
-        </div>
-        <div style={{ font: `600 14px ${D.mono}`, textAlign: "right" }}>↗</div>
-        <div
-          style={{
-            font: `400 10px ${D.mono}`,
-            textAlign: "right",
-            opacity: 0.8,
-          }}
-        >
-          NOV 24
         </div>
       </div>
     </div>
@@ -2130,31 +2033,53 @@ const DeskNavPlate = ({
   ] as const;
 
   return (
-    <Item x={x} y={y} w={388} h={78} rotate={rotate} z={24}>
+    <Item
+      x={x}
+      y={y}
+      w={382}
+      h={64}
+      rotate={rotate}
+      z={24}
+      style={{ filter: "drop-shadow(0 8px 12px rgba(20,8,0,0.24))" }}
+    >
       <div
         style={{
+          position: "relative",
           width: "100%",
           height: "100%",
-          borderRadius: 3,
+          borderRadius: 2,
           background:
-            "linear-gradient(135deg, #d0a15c 0%, #8f632b 36%, #e1bd74 52%, #684019 100%)",
-          border: "1px solid rgba(35,18,5,0.75)",
+            "linear-gradient(135deg, #b98d45 0%, #d8b267 40%, #a97832 100%)",
+          border: "1px solid rgba(56,31,10,0.42)",
           boxShadow:
-            "inset 0 1px 0 rgba(255,238,180,0.55), inset 0 -2px 8px rgba(35,16,3,0.45), 0 10px 22px rgba(20,8,0,0.35)",
-          padding: 8,
+            "inset 0 1px 0 rgba(255,239,184,0.38), inset 0 -2px 5px rgba(58,27,6,0.24)",
         }}
       >
         <div
           style={{
-            width: "100%",
+            position: "absolute",
+            inset: 6,
+            border: "1px solid rgba(65,37,12,0.18)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(100deg, transparent 0 38%, rgba(255,244,198,0.18) 49%, transparent 60%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
             height: "100%",
-            border: "1px solid rgba(55,30,9,0.45)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 10,
-            background:
-              "linear-gradient(180deg, rgba(255,238,180,0.22), rgba(40,18,4,0.10))",
+            gap: 12,
+            padding: "0 20px",
           }}
         >
           {links.map(([label, href], index) => (
@@ -2162,17 +2087,15 @@ const DeskNavPlate = ({
               key={label}
               href={href}
               style={{
-                color: index === 0 ? "#2a1606" : "#4a2a0d",
+                color: index === 0 ? "#2f1907" : "#5c3513",
                 font: `600 11px ${D.mono}`,
-                letterSpacing: "0.16em",
+                letterSpacing: "0.17em",
                 textTransform: "uppercase",
                 textDecoration: "none",
-                textShadow: "0 1px 0 rgba(255,230,160,0.36)",
-                padding: "7px 10px",
-                border:
-                  index === 0
-                    ? "1px solid rgba(45,20,5,0.35)"
-                    : "1px solid transparent",
+                textShadow: "0 1px 0 rgba(255,238,184,0.28)",
+                padding: "5px 6px",
+                borderBottom:
+                  index === 0 ? "1px solid rgba(55,27,7,0.26)" : undefined,
               }}
             >
               {label}
@@ -2319,10 +2242,9 @@ export default function HomepageDesk() {
               ↓ now
             </HandLabel>
             <NowCard x={900} y={1060} rotate={-2} />
-            <ArsenalTicket x={900} y={1230} rotate={3} />
             <Scrap
               x={920}
-              y={1380}
+              y={1230}
               rotate={-2}
               w={300}
               h={100}

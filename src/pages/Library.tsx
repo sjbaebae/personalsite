@@ -10,6 +10,7 @@ const ITEMS: LibraryItem[] = [
     title: 'Real Analysis I',
     kind: 'book',
     note: 'Terence Tao. First in the analysis series.',
+    url: 'https://turan-edu.uz/media/books/2024/05/28/1664976801.pdf',
   },
   {
     title: 'The Intelligent Investor',
@@ -39,25 +40,25 @@ const ITEMS: LibraryItem[] = [
 
 export default function Library() {
   return (
-    <main className="mx-auto max-w-2xl animate-fade-in py-4">
+    <div className="mx-auto max-w-2xl animate-fade-in py-4">
       <header className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight">library</h1>
-        <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+        <h1 className="text-4xl font-semibold tracking-tight text-[#1b1a17]">library</h1>
+        <p className="mt-3 text-sm leading-6 text-[#6e6450]">
           Things I find interesting, useful, or worth coming back to.
         </p>
       </header>
 
-      <div className="divide-y divide-white/10 border-y border-white/10">
+      <div className="divide-y divide-[#1b1a17]/15 border-y border-[#1b1a17]/15">
         {ITEMS.map((item) => {
           const content = (
             <>
               <div className="mb-2 flex items-baseline gap-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent)]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a8331c]">
                   {item.kind}
                 </span>
-                <h2 className="text-lg font-medium tracking-tight">{item.title}</h2>
+                <h2 className="text-lg font-medium tracking-tight text-[#1b1a17]">{item.title}</h2>
               </div>
-              <p className="text-sm leading-6 text-[var(--muted)]">{item.note}</p>
+              <p className="text-sm leading-6 text-[#6e6450]">{item.note}</p>
             </>
           )
 
@@ -67,7 +68,7 @@ export default function Library() {
               href={item.url}
               target="_blank"
               rel="noopener"
-              className="block py-6 no-underline transition-colors hover:text-[var(--accent)]"
+              className="block py-6 no-underline transition-colors hover:bg-[#efe2bd]/45"
             >
               {content}
             </a>
@@ -78,6 +79,6 @@ export default function Library() {
           )
         })}
       </div>
-    </main>
+    </div>
   )
 }
