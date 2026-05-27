@@ -12,7 +12,7 @@ const getInitialView = (): View => {
   return view === 'blog' || view === 'library' ? view : 'desk'
 }
 
-const Nav = ({ view }: { view: View }) => {
+const PageNav = ({ view }: { view: View }) => {
   const links = [
     ['desk', '/'],
     ['writing', '/?view=blog'],
@@ -20,7 +20,7 @@ const Nav = ({ view }: { view: View }) => {
   ] as const
 
   return (
-    <nav className="fixed right-5 top-5 z-[950] flex gap-4 rounded bg-[#0a0a0a]/70 px-4 py-2 font-mono text-xs backdrop-blur">
+    <nav className="mb-12 flex items-center gap-2 border-b border-[#1b1a17]/15 pb-5 font-mono text-[11px] uppercase tracking-[0.16em]">
       {links.map(([label, href]) => {
         const active =
           (label === 'desk' && view === 'desk') ||
@@ -31,7 +31,12 @@ const Nav = ({ view }: { view: View }) => {
           <a
             key={label}
             href={href}
-            className={active ? 'text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}
+            className={[
+              'px-3 py-2 no-underline transition-colors',
+              active
+                ? 'border border-[#a8331c]/50 text-[#a8331c]'
+                : 'text-[#6e6450] hover:text-[#1b1a17]',
+            ].join(' ')}
           >
             {label}
           </a>
@@ -62,9 +67,9 @@ export default function App() {
 
   if (view !== 'desk') {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-[var(--fg)]">
-        <Nav view={view} />
-        <main className="mx-auto w-full max-w-3xl px-6 py-12">
+      <div className="min-h-screen bg-[#5a3a1f] px-4 py-8 text-[#1b1a17] sm:px-6 sm:py-12">
+        <main className="mx-auto min-h-[calc(100vh-6rem)] w-full max-w-4xl bg-[#f8f0d5] px-6 py-8 shadow-[0_24px_70px_rgba(20,8,0,0.45),inset_0_0_90px_rgba(80,55,20,0.10)] sm:px-12 sm:py-10">
+          <PageNav view={view} />
           {view === 'blog' ? <Blog /> : <Library />}
         </main>
       </div>
@@ -73,7 +78,6 @@ export default function App() {
 
   return (
     <>
-      <Nav view="desk" />
       <HomepageDesk />
       {!introComplete && <Opening onComplete={handleIntroComplete} />}
     </>

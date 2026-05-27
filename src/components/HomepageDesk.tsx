@@ -2114,6 +2114,76 @@ const CoffeeRing = ({
   />
 );
 
+const DeskNavPlate = ({
+  x,
+  y,
+  rotate = 0,
+}: {
+  x: number;
+  y: number;
+  rotate?: number;
+}) => {
+  const links = [
+    ["desk", "/"],
+    ["writing", "/?view=blog"],
+    ["library", "/?view=library"],
+  ] as const;
+
+  return (
+    <Item x={x} y={y} w={388} h={78} rotate={rotate} z={24}>
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: 3,
+          background:
+            "linear-gradient(135deg, #d0a15c 0%, #8f632b 36%, #e1bd74 52%, #684019 100%)",
+          border: "1px solid rgba(35,18,5,0.75)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,238,180,0.55), inset 0 -2px 8px rgba(35,16,3,0.45), 0 10px 22px rgba(20,8,0,0.35)",
+          padding: 8,
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            border: "1px solid rgba(55,30,9,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            background:
+              "linear-gradient(180deg, rgba(255,238,180,0.22), rgba(40,18,4,0.10))",
+          }}
+        >
+          {links.map(([label, href], index) => (
+            <a
+              key={label}
+              href={href}
+              style={{
+                color: index === 0 ? "#2a1606" : "#4a2a0d",
+                font: `600 11px ${D.mono}`,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                textDecoration: "none",
+                textShadow: "0 1px 0 rgba(255,230,160,0.36)",
+                padding: "7px 10px",
+                border:
+                  index === 0
+                    ? "1px solid rgba(45,20,5,0.35)"
+                    : "1px solid transparent",
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </Item>
+  );
+};
+
 const DeskLink = ({
   x,
   y,
@@ -2202,6 +2272,7 @@ export default function HomepageDesk() {
             />
 
             <Letter x={30} y={70} rotate={-1.5} />
+            <DeskNavPlate x={795} y={70} rotate={1.4} />
             <ChessOnDesk x={640} y={240} rotate={1.2} />
             <Polaroid
               x={1230}
