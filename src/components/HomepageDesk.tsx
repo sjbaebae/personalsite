@@ -3,10 +3,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { Chess, type Move as ChessMove, type Square } from "chess.js";
 
 // Port of homepage-desk.jsx + chess.jsx + nav.jsx from the design bundle.
 // Variation 03: DESK — wood-grain surface littered with paper artifacts.
@@ -35,7 +37,7 @@ const D = {
 };
 
 const CANVAS_W = 1500;
-const CANVAS_H = 3180;
+const CANVAS_H = 3620;
 
 const useFitWidth = (W: number) => {
   const [scale, setScale] = useState(1);
@@ -60,9 +62,9 @@ const MONO = '"IBM Plex Mono", ui-monospace, monospace';
 
 type Color = "w" | "b";
 type PieceType = "k" | "q" | "r" | "b" | "n" | "p";
-type Piece = { color: Color; type: PieceType } | null;
-type Board = Piece[][];
-type Move = [number, number, number, number];
+type BoardPiece = { color: Color; type: PieceType } | null;
+type Board = BoardPiece[][];
+type BoardMove = [number, number, number, number];
 type HistEntry = { by: [string, string]; mv: string; side: Color; n: number };
 
 const GLYPH: Record<Color, Record<PieceType, string>> = {
@@ -70,171 +72,60 @@ const GLYPH: Record<Color, Record<PieceType, string>> = {
   b: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
 };
 
-const INITIAL = (): Board => {
-  const back: PieceType[] = ["r", "n", "b", "q", "k", "b", "n", "r"];
-  return [
-    back.map((t) => ({ color: "b" as Color, type: t })),
-    Array(8)
-      .fill(0)
-      .map(() => ({ color: "b" as Color, type: "p" as PieceType })),
-    Array(8).fill(null),
-    Array(8).fill(null),
-    Array(8).fill(null),
-    Array(8).fill(null),
-    Array(8)
-      .fill(0)
-      .map(() => ({ color: "w" as Color, type: "p" as PieceType })),
-    back.map((t) => ({ color: "w" as Color, type: t })),
-  ];
+const squareName = (r: number, c: number) => "abcdefgh"[c] + (8 - r);
+const coordsToSquare = (r: number, c: number) => squareName(r, c) as Square;
+const squareToCoords = (square: string): [number, number] | null => {
+  const file = "abcdefgh".indexOf(square[0]);
+  const rank = Number(square[1]);
+  if (file < 0 || rank < 1 || rank > 8) return null;
+  return [8 - rank, file];
 };
 
-const inB = (r: number, c: number) => r >= 0 && r < 8 && c >= 0 && c < 8;
-const KING_DIRS: [number, number][] = [
-  [-1, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, -1],
-  [0, 1],
-  [1, -1],
-  [1, 0],
-  [1, 1],
-];
+const uciToBoardMove = (uci: string): BoardMove | null => {
+  if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return null;
+  const from = squareToCoords(uci.slice(0, 2));
+  const to = squareToCoords(uci.slice(2, 4));
+  if (!from || !to) return null;
+  return [from[0], from[1], to[0], to[1]];
+};
 
-function legalMoves(board: Board, r: number, c: number): [number, number][] {
-  const p = board[r][c];
-  if (!p) return [];
-  const opp: Color = p.color === "w" ? "b" : "w";
-  const out: [number, number][] = [];
-
-  if (p.type === "p") {
-    const dir = p.color === "w" ? -1 : 1;
-    const startRow = p.color === "w" ? 6 : 1;
-    if (inB(r + dir, c) && !board[r + dir][c]) {
-      out.push([r + dir, c]);
-      if (r === startRow && !board[r + 2 * dir][c]) out.push([r + 2 * dir, c]);
-    }
-    for (const dc of [-1, 1]) {
-      const nr = r + dir,
-        nc = c + dc;
-      if (inB(nr, nc) && board[nr][nc]?.color === opp) out.push([nr, nc]);
-    }
-    return out;
-  }
-  if (p.type === "n") {
-    for (const [dr, dc] of [
-      [-2, -1],
-      [-2, 1],
-      [-1, -2],
-      [-1, 2],
-      [1, -2],
-      [1, 2],
-      [2, -1],
-      [2, 1],
-    ] as [number, number][]) {
-      const nr = r + dr,
-        nc = c + dc;
-      if (inB(nr, nc) && (!board[nr][nc] || board[nr][nc]!.color === opp))
-        out.push([nr, nc]);
-    }
-    return out;
-  }
-  if (p.type === "k") {
-    for (const [dr, dc] of KING_DIRS) {
-      const nr = r + dr,
-        nc = c + dc;
-      if (inB(nr, nc) && (!board[nr][nc] || board[nr][nc]!.color === opp))
-        out.push([nr, nc]);
-    }
-    return out;
-  }
-  const dirs: [number, number][] =
-    p.type === "r"
-      ? [
-          [-1, 0],
-          [1, 0],
-          [0, -1],
-          [0, 1],
-        ]
-      : p.type === "b"
-        ? [
-            [-1, -1],
-            [-1, 1],
-            [1, -1],
-            [1, 1],
-          ]
-        : KING_DIRS;
-  for (const [dr, dc] of dirs) {
-    let nr = r + dr,
-      nc = c + dc;
-    while (inB(nr, nc)) {
-      if (!board[nr][nc]) out.push([nr, nc]);
-      else {
-        if (board[nr][nc]!.color === opp) out.push([nr, nc]);
-        break;
-      }
-      nr += dr;
-      nc += dc;
-    }
-  }
-  return out;
-}
-
-function allMoves(board: Board, color: Color): Move[] {
-  const out: Move[] = [];
-  for (let r = 0; r < 8; r++)
-    for (let c = 0; c < 8; c++) {
-      if (board[r][c]?.color === color) {
-        for (const [nr, nc] of legalMoves(board, r, c))
-          out.push([r, c, nr, nc]);
-      }
-    }
-  return out;
-}
-
-function pickMove(board: Board, color: Color): Move | null {
-  const moves = allMoves(board, color);
-  if (!moves.length) return null;
-  const V: Record<PieceType, number> = {
-    p: 1,
-    n: 3,
-    b: 3,
-    r: 5,
-    q: 9,
-    k: 100,
+const uciToMoveInput = (uci: string) => {
+  if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return null;
+  return {
+    from: uci.slice(0, 2),
+    to: uci.slice(2, 4),
+    promotion: uci[4] ?? "q",
   };
-  const scored = moves.map((m) => {
-    const t = board[m[2]][m[3]];
-    let s = t ? V[t.type] * 10 : 0;
-    s += Math.random();
-    const mover = board[m[0]][m[1]]!;
-    if (mover.type === "p" || mover.type === "n") s += 0.5;
-    return { m, s };
-  });
-  scored.sort((a, b) => b.s - a.s);
-  const top = scored.slice(0, Math.min(3, scored.length));
-  return top[Math.floor(Math.random() * top.length)].m;
-}
+};
 
-function applyMove(board: Board, [r, c, nr, nc]: Move): Board {
-  const next = board.map((row) => row.slice());
-  const p = next[r][c]!;
-  next[r][c] = null;
-  next[nr][nc] =
-    p.type === "p" && (nr === 0 || nr === 7)
-      ? { color: p.color, type: "q" }
-      : p;
-  return next;
-}
+const castleTargetFromRook = (square: Square): Square | null => {
+  if (square === "h1") return "g1";
+  if (square === "a1") return "c1";
+  return null;
+};
 
-const squareName = (r: number, c: number) => "abcdefgh"[c] + (8 - r);
-function moveNotation(board: Board, [r, c, nr, nc]: Move) {
-  const p = board[r][c]!;
-  const cap = board[nr][nc];
-  const piece = p.type === "p" ? "" : p.type.toUpperCase();
-  const x = cap ? "x" : "";
-  const from = p.type === "p" && cap ? "abcdefgh"[c] : "";
-  return `${piece}${from}${x}${squareName(nr, nc)}`;
-}
+const chessBoardToBoard = (rows: ReturnType<Chess["board"]>): Board =>
+  rows.map((row) =>
+    row.map((piece) =>
+      piece
+        ? { color: piece.color as Color, type: piece.type as PieceType }
+        : null,
+    ),
+  );
+
+const resultForGame = (game: Chess) => {
+  if (!game.isGameOver()) return null;
+  if (game.isCheckmate()) {
+    return game.turn() === "w"
+      ? "opponent wins by checkmate."
+      : "you win by checkmate.";
+  }
+  if (game.isStalemate()) return "draw by stalemate.";
+  if (game.isInsufficientMaterial()) return "draw by insufficient material.";
+  if (game.isThreefoldRepetition()) return "draw by repetition.";
+  if (game.isDrawByFiftyMoves()) return "draw by fifty-move rule.";
+  return "draw.";
+};
 
 const QUEUE: [string, string][] = [
   ["anon-7f3a", "são paulo"],
@@ -254,11 +145,11 @@ const QUEUE: [string, string][] = [
 type ChessCtxValue = {
   board: Board;
   selected: [number, number] | null;
-  lastMove: Move | null;
+  lastMove: BoardMove | null;
   turn: Color;
   history: HistEntry[];
   gameOver: string | null;
-  legals: [number, number][];
+  legals: BoardMove[];
   onSquare: (r: number, c: number) => void;
   reset: () => void;
   currentOpp: [string, string];
@@ -269,75 +160,217 @@ type ChessCtxValue = {
 const ChessCtx = createContext<ChessCtxValue | null>(null);
 
 const ChessGame = ({ children }: { children: ReactNode }) => {
-  const [board, setBoard] = useState<Board>(INITIAL);
+  const gameRef = useRef(new Chess());
+  const [board, setBoard] = useState<Board>(() =>
+    chessBoardToBoard(gameRef.current.board()),
+  );
   const [selected, setSelected] = useState<[number, number] | null>(null);
-  const [lastMove, setLastMove] = useState<Move | null>(null);
+  const [lastMove, setLastMove] = useState<BoardMove | null>(null);
   const [turn, setTurn] = useState<Color>("w");
   const [history, setHistory] = useState<HistEntry[]>([]);
   const [queueIdx, setQueueIdx] = useState(0);
   const [moveNum, setMoveNum] = useState(1);
   const [gameOver, setGameOver] = useState<string | null>(null);
+  const engineRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    if (typeof Worker === "undefined") return;
+    const engine = new Worker("/stockfish/stockfish.js");
+    engineRef.current = engine;
+    engine.postMessage("uci");
+    engine.postMessage("isready");
+
+    return () => {
+      engine.terminate();
+      if (engineRef.current === engine) engineRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (turn !== "b" || gameOver) return;
-    const delay = 1100 + Math.random() * 1600;
-    const t = setTimeout(() => {
-      const mv = pickMove(board, "b");
-      if (!mv) {
-        setGameOver("white wins. black ran out of moves.");
+    const engine = engineRef.current;
+    const game = gameRef.current;
+    const fen = game.fen();
+    const opponent = QUEUE[queueIdx % QUEUE.length];
+    let cancelled = false;
+
+    const commitMove = (move: ChessMove | null, label: [string, string]) => {
+      if (cancelled) return;
+      if (!move) {
+        setGameOver("you win. opponent has no legal moves.");
         return;
       }
-      const notation = moveNotation(board, mv);
-      const opp = QUEUE[queueIdx % QUEUE.length];
-      setBoard(applyMove(board, mv));
-      setLastMove(mv);
+      setBoard(chessBoardToBoard(game.board()));
+      const boardMove = uciToBoardMove(move.lan) ?? [
+        squareToCoords(move.from)?.[0] ?? 0,
+        squareToCoords(move.from)?.[1] ?? 0,
+        squareToCoords(move.to)?.[0] ?? 0,
+        squareToCoords(move.to)?.[1] ?? 0,
+      ];
+      setLastMove(boardMove);
       setHistory((h) => [
         ...h,
-        { by: opp, mv: notation, side: "b", n: moveNum },
+        { by: label, mv: move.san, side: "b", n: moveNum },
       ]);
       setMoveNum((n) => n + 1);
       setQueueIdx((i) => i + 1);
-      setTurn("w");
-    }, delay);
-    return () => clearTimeout(t);
-  }, [turn, board, gameOver, queueIdx, moveNum]);
+      const result = resultForGame(game);
+      if (result) setGameOver(result);
+      else setTurn(game.turn() as Color);
+    };
+
+    const pickFallback = () => {
+      const moves = game.moves({ verbose: true });
+      if (!moves.length) return null;
+      const move = moves[Math.floor(Math.random() * moves.length)];
+      return game.move({
+        from: move.from,
+        to: move.to,
+        promotion: move.promotion ?? "q",
+      });
+    };
+
+    if (!engine) {
+      const t = window.setTimeout(() => {
+        if (game.fen() !== fen) return;
+        commitMove(pickFallback(), opponent);
+      }, 700);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(t);
+      };
+    }
+
+    const activeEngine = engine;
+    const fallback = window.setTimeout(() => {
+      activeEngine.removeEventListener("message", onMessage);
+      if (game.fen() !== fen) return;
+      commitMove(pickFallback(), opponent);
+    }, 3200);
+
+    function onMessage(event: MessageEvent<string>) {
+      const line = String(event.data);
+      if (!line.startsWith("bestmove ")) return;
+      window.clearTimeout(fallback);
+      activeEngine.removeEventListener("message", onMessage);
+      const best = line.split(/\s+/)[1];
+      if (game.fen() !== fen) return;
+      const input = uciToMoveInput(best);
+      commitMove(input ? game.move(input) : pickFallback(), opponent);
+    }
+
+    activeEngine.addEventListener("message", onMessage);
+    activeEngine.postMessage("stop");
+    activeEngine.postMessage(`position fen ${fen}`);
+    activeEngine.postMessage("go movetime 650");
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fallback);
+      activeEngine.removeEventListener("message", onMessage);
+      activeEngine.postMessage("stop");
+    };
+  }, [turn, gameOver, moveNum, queueIdx]);
 
   const legals = useMemo(() => {
     if (!selected || turn !== "w") return [];
-    return legalMoves(board, selected[0], selected[1]);
-  }, [board, selected, turn]);
+    const square = coordsToSquare(selected[0], selected[1]);
+    return gameRef.current
+      .moves({ square, verbose: true })
+      .map((move) => {
+        const to = squareToCoords(move.to);
+        return to
+          ? ([selected[0], selected[1], to[0], to[1]] as BoardMove)
+          : null;
+      })
+      .filter((move): move is BoardMove => Boolean(move));
+  }, [selected, turn, board]);
+
+  const commitUserMove = (from: Square, to: Square, coords?: BoardMove) => {
+    let move: ChessMove;
+    try {
+      move = gameRef.current.move({ from, to, promotion: "q" });
+    } catch {
+      return false;
+    }
+    const fromCoords = squareToCoords(from);
+    const toCoords = squareToCoords(to);
+    setBoard(chessBoardToBoard(gameRef.current.board()));
+    setLastMove(
+      coords ?? [
+        fromCoords?.[0] ?? 0,
+        fromCoords?.[1] ?? 0,
+        toCoords?.[0] ?? 0,
+        toCoords?.[1] ?? 0,
+      ],
+    );
+    setHistory((h) => [
+      ...h,
+      { by: ["you", "right here"], mv: move.san, side: "w", n: moveNum },
+    ]);
+    setSelected(null);
+    const result = resultForGame(gameRef.current);
+    if (result) setGameOver(result);
+    else setTurn(gameRef.current.turn() as Color);
+    return true;
+  };
+
+  const tryCastleFromRookClick = (rookSquare: Square) => {
+    const target = castleTargetFromRook(rookSquare);
+    if (!target) return false;
+    const legalCastle = gameRef.current
+      .moves({ square: "e1", verbose: true })
+      .find(
+        (move) =>
+          move.to === target &&
+          (move.isKingsideCastle() || move.isQueensideCastle()),
+      );
+    if (!legalCastle) return false;
+    return commitUserMove("e1", target);
+  };
 
   const onSquare = (r: number, c: number) => {
     if (turn !== "w" || gameOver) return;
     const piece = board[r][c];
+    const square = coordsToSquare(r, c);
     if (selected) {
-      const hit = legals.find(([nr, nc]) => nr === r && nc === c);
+      const hit = legals.find((move) => move[2] === r && move[3] === c);
       if (hit) {
-        const mv: Move = [selected[0], selected[1], r, c];
-        const notation = moveNotation(board, mv);
-        setBoard(applyMove(board, mv));
-        setLastMove(mv);
-        setHistory((h) => [
-          ...h,
-          { by: ["you", "right here"], mv: notation, side: "w", n: moveNum },
-        ]);
-        setSelected(null);
-        setTurn("b");
+        commitUserMove(coordsToSquare(selected[0], selected[1]), square, hit);
         return;
       }
+      const selectedPiece = board[selected[0]][selected[1]];
+      if (
+        selectedPiece?.color === "w" &&
+        selectedPiece.type === "k" &&
+        piece?.color === "w" &&
+        piece.type === "r" &&
+        tryCastleFromRookClick(square)
+      ) {
+        return;
+      }
+    }
+    if (
+      piece?.color === "w" &&
+      piece.type === "r" &&
+      tryCastleFromRookClick(square)
+    ) {
+      return;
     }
     if (piece && piece.color === "w") setSelected([r, c]);
     else setSelected(null);
   };
 
   const reset = () => {
-    setBoard(INITIAL());
+    gameRef.current.reset();
+    setBoard(chessBoardToBoard(gameRef.current.board()));
     setSelected(null);
     setLastMove(null);
     setTurn("w");
     setHistory([]);
     setMoveNum(1);
     setGameOver(null);
+    engineRef.current?.postMessage("ucinewgame");
   };
 
   const value: ChessCtxValue = {
@@ -360,7 +393,7 @@ const ChessGame = ({ children }: { children: ReactNode }) => {
 
 const useChess = () => useContext(ChessCtx);
 
-const PieceGlyph = ({ p, size }: { p: Piece; size: number }) => {
+const PieceGlyph = ({ p, size }: { p: BoardPiece; size: number }) => {
   if (!p) return null;
   const pieceScale = p.type === "p" ? 0.66 : 0.78;
 
@@ -402,11 +435,14 @@ const ChessBoardOnly = ({ size = 480 }: { size?: number }) => {
             lastMove &&
             ((lastMove[0] === r && lastMove[1] === c) ||
               (lastMove[2] === r && lastMove[3] === c));
-          const legalDot = legals.find(([nr, nc]) => nr === r && nc === c);
+          const legalDot = legals.find(
+            (move) => move[2] === r && move[3] === c,
+          );
           const isCapture = legalDot && board[r][c];
           return (
             <div
               key={`${r}-${c}`}
+              data-square={squareName(r, c)}
               onClick={() => onSquare(r, c)}
               style={{
                 position: "absolute",
@@ -481,6 +517,54 @@ const ChessBoardOnly = ({ size = 480 }: { size?: number }) => {
             </div>
           );
         }),
+      )}
+      {gameOver && (
+        <div
+          className="animate-fade-in"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(27,26,23,0.28)",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              minWidth: size * 0.48,
+              maxWidth: size * 0.76,
+              background: D.paper,
+              color: D.ink,
+              border: `1px solid ${D.ink}55`,
+              boxShadow: "0 16px 32px rgba(20,8,0,0.35)",
+              padding: "18px 22px",
+              textAlign: "center",
+              transform: "rotate(-2deg)",
+            }}
+          >
+            <div
+              style={{
+                font: `600 11px ${D.mono}`,
+                color: D.red,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              result
+            </div>
+            <div
+              style={{
+                font: `italic 28px/1.05 ${D.serif}`,
+                color: D.ink,
+              }}
+            >
+              {gameOver}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1300,6 +1384,23 @@ const ThumbBox = ({
   </div>
 );
 
+const ThumbImage = ({ src, alt }: { src: string; alt: string }) => (
+  <ThumbBox bg={D.ink}>
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        filter: "saturate(0.92) contrast(0.98)",
+      }}
+    />
+  </ThumbBox>
+);
+
 const ThumbClinic = () => (
   <ThumbBox bg="#f4e8c5">
     <svg viewBox="0 0 80 80" width="100%" height="100%">
@@ -1515,12 +1616,34 @@ const ThumbSite = () => (
   </ThumbBox>
 );
 
+const ThumbTinyCnn = () => (
+  <ThumbBox bg="#071018">
+    <img
+      src="/tiny_cnn.png"
+      alt=""
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+      }}
+    />
+  </ThumbBox>
+);
+
 const PROJECT_THUMBS: Record<string, ReactNode> = {
   clinic: <ThumbClinic />,
   circuits: <ThumbCircuits />,
   match: <ThumbMatch />,
   febrile: <ThumbFebrile />,
   site: <ThumbSite />,
+  tinycnn: <ThumbTinyCnn />,
+  quizvoyage: (
+    <ThumbImage src="/projects/quiz-voyage.png" alt="Quiz Voyage screenshot" />
+  ),
+  powersearch: (
+    <ThumbImage src="/projects/powersearch.png" alt="PowerSearch thumbnail" />
+  ),
 };
 
 // =========================================================================
@@ -1540,73 +1663,98 @@ const ProjectsPage = ({
     thumb: string;
     year: string;
     name: string;
+    href?: string;
     blurb: ReactNode;
   }[] = [
     {
-      thumb: "clinic",
+      thumb: "tinycnn",
       year: "2026",
-      name: "clinic-notes.clj",
+      name: "tiny_cnn",
+      href: "https://github.com/sjbaebae/tiny_cnn",
       blurb: (
         <>
-          A small tool for residents — quick structured note-taking with vitals
-          + diff against last shift. Written in Clojure, because I wanted to,
-          and because s-expressions hold up well at 3am.
+          MNIST from scratch: raw IDX parsing, hand-written training loops, and
+          CNN layers that peel PyTorch back toward NumPy. The visualizer shows
+          learned conv filters and live digit predictions.
         </>
       ),
     },
     {
       thumb: "circuits",
-      year: "2025",
-      name: "circuits.lab",
+      year: "2026",
+      name: "wisp",
+      href: "https://github.com/sjbaebae/wisp",
       blurb: (
         <>
-          An interactive visualizer for attention-head specialization in small
-          (4–6 layer) transformers. Hover any head to see what tokens it routes;
-          drag to compose ablations. Started as a homework assignment, became my
-          thesis.
+          Natural-language workflow automation over MCP tools. It searches
+          available tools, builds a parallel execution DAG, and routes work
+          through a live backend.
         </>
       ),
     },
     {
       thumb: "match",
-      year: "2025",
-      name: "match-grapher",
+      year: "2026",
+      name: "sutro-problems",
+      href: "https://github.com/cybertronai/sutro-problems/pulls?q=author%3Asjbaebae",
       blurb: (
         <>
-          Every premier league pass as a directed edge. Lets you ask things like
-          "who has the highest betweenness in Arsenal's build-up?" The answer is
-          usually Ødegaard, occasionally Rice.
-        </>
-      ),
-    },
-    {
-      thumb: "febrile",
-      year: "2024",
-      name: "febrile",
-      blurb: (
-        <>
-          UCSF research project: predicting sepsis from triage notes + early
-          vitals. Logistic regression beat most of the BERT-fine-tuned models we
-          tried. The prior, in medicine, eats your model alive.
+          Reproducible problems for energy-efficient learning research. Added
+          records for matmul, sparse-parity records, and weighted-lifetime
+          submissions.
         </>
       ),
     },
     {
       thumb: "site",
-      year: "2023–",
-      name: "this site (v6)",
+      year: "2026",
+      name: "ByteDMD",
+      href: "https://github.com/cybertronai/ByteDMD/pulls?q=author%3Asjbaebae",
+      blurb: <>Data movement distance experiments.</>,
+    },
+    {
+      thumb: "quizvoyage",
+      year: "2023",
+      name: "Quiz Voyage",
+      href: "https://devpost.com/software/quiz-voyage",
       blurb: (
         <>
-          Rewritten roughly every six months. The chess board is new for v6 —
-          the first version of this site where I left something running for
-          strangers to interact with. So far that has gone better than I
-          expected.
+          DandyHacks winner: a generative-AI study game where students upload
+          notes, fight quizzes as battles, and get guided by a virtual tutor.
+        </>
+      ),
+    },
+    {
+      thumb: "febrile",
+      year: "2026",
+      name: "cactograd",
+      href: "https://github.com/sjbaebae/cactograd",
+      blurb: (
+        <>
+          On-device autograd for Cactus: reverse-mode differentiation over
+          compute graphs, hand-written ARM-SIMD backward kernels, and a
+          trainable engine path for local fine-tuning.
+        </>
+      ),
+    },
+    {
+      thumb: "powersearch",
+      year: "2020",
+      name: "PowerSearch",
+      href: "https://devpost.com/software/powersearch",
+      blurb: (
+        <>
+          Internet-scale retrieval assistant before RAG: query expansion, web
+          scraping, source retrieval, and LLM/NLP summarization into condensed
+          answers for research workflows.
         </>
       ),
     },
   ];
+  const pageHeight = 220 + rows.length * 180;
+
   return (
-    <Item x={x} y={y} w={1360} h={1120} rotate={rotate} z={11}>
+    <Item x={x} y={y} w={1360} h={pageHeight} rotate={rotate} z={11}>
       <div
         style={{
           width: "100%",
@@ -1635,7 +1783,7 @@ const ProjectsPage = ({
             background: `${D.red}66`,
           }}
         />
-        {[90, 290, 490, 690, 850].map((t) => (
+        {[90, 290, 490, 690, 890, 1090, 1290].map((t) => (
           <div
             key={t}
             style={{
@@ -1724,15 +1872,19 @@ const ProjectsPage = ({
                   >
                     {r.year}
                   </span>
-                  <span
+                  <a
+                    href={r.href}
+                    target={r.href ? "_blank" : undefined}
+                    rel={r.href ? "noopener" : undefined}
                     style={{
                       font: `500 20px "Spectral"`,
                       color: D.ink,
                       borderBottom: `1px solid ${D.ochre}`,
+                      textDecoration: "none",
                     }}
                   >
                     {r.name}
-                  </span>
+                  </a>
                 </div>
                 <div
                   style={{
@@ -1763,9 +1915,14 @@ const LIBRARY_ITEMS = [
     "terence tao · first in the series",
     "https://turan-edu.uz/media/books/2024/05/28/1664976801.pdf",
   ],
+  [
+    "book",
+    "Principles of Mathematical Analysis",
+    "rudin · third edition",
+    "https://david92jackson.neocities.org/images/Principles_of_Mathematical_Analysis-Rudin.pdf",
+  ],
   ["talk", "generalization", "ilya on why models learn", undefined],
   ["site", "explorables", "complex systems, made tangible", undefined],
-  ["book", "ml systems design", "the parts around the model", undefined],
 ] as const;
 
 const LibraryCard = ({
@@ -2251,8 +2408,8 @@ export default function HomepageDesk() {
               color={D.paper}
               tag="reading"
               dateLabel="this week"
-              title="real analysis I"
-              body="terence tao · first in the analysis series. epsilon-delta season."
+              title="rudin, principles"
+              body="principles of mathematical analysis · third edition."
             />
 
             {/* BOTTOM ZONE B · projects */}

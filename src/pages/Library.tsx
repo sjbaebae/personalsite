@@ -13,6 +13,12 @@ const ITEMS: LibraryItem[] = [
     url: 'https://turan-edu.uz/media/books/2024/05/28/1664976801.pdf',
   },
   {
+    title: 'Principles of Mathematical Analysis',
+    kind: 'book',
+    note: 'Walter Rudin. Third edition.',
+    url: 'https://david92jackson.neocities.org/images/Principles_of_Mathematical_Analysis-Rudin.pdf',
+  },
+  {
     title: 'The Intelligent Investor',
     kind: 'book',
     note: 'Still pretty core in investing.',
