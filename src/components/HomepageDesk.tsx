@@ -1733,8 +1733,7 @@ const ProjectsPage = ({
         <>
           On-device autograd for Cactus: reverse-mode differentiation over
           compute graphs, hand-written ARM-SIMD backward kernels, and a
-          trainable engine path for local fine-tuning. Sloppy still need to
-          improve it.
+          trainable engine path for local fine-tuning.
         </>
       ),
     },
